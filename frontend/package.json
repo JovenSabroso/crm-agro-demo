@@ -1,0 +1,33 @@
+{
+  "name": "crm-agro-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 5173",
+    "test": "vitest run",
+    "icons": "node scripts/gen-icons.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "chart.js": "^4.6.2",
+    "jsqr": "^1.4.0",
+    "leaflet": "^1.9.4",
+    "lucide-vue-next": "^1.0.0",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.46",
+    "vue-router": "^5.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.11",
+    "@vue/test-utils": "^2.6.0",
+    "jsdom": "^29.1.1",
+    "sharp": "^0.35.5",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.2"
+  }
+}

@@ -1,0 +1,163 @@
+<!doctype html>
+<!-- Generado: 25/11/2026 07:50 -->
+<!-- Panel de administración del módulo de WhatsApp. Página independiente: funciona con cualquier frontend.
+     Se sirve en <ruta-del-modulo>/panel (ej. /api/whatsapp/panel). Pide el token y llama a la API relativa a esta ruta. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatsApp · Administración</title>
+<style>
+  :root { --fondo:#f4f6fb; --tarjeta:#fff; --texto:#1b2333; --suave:#5b667a; --acento:#1f6feb; --ok:#1a7f37; --mal:#b42318; --linea:#dde3ee; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo:#0f1521; --tarjeta:#182032; --texto:#e8edf7; --suave:#9aa6bd; --acento:#4c8dff; --ok:#3fb950; --mal:#f85149; --linea:#2a3550; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--fondo); color:var(--texto); font-family:system-ui,Segoe UI,Roboto,sans-serif; padding:16px; }
+  main { max-width:760px; margin:0 auto; display:grid; gap:14px; }
+  h1 { margin:0 0 2px; font-size:1.4rem; } h2 { margin:0 0 10px; font-size:1.05rem; }
+  .sub { margin:0; color:var(--suave); font-size:.92rem; }
+  .tarjeta { background:var(--tarjeta); border:1px solid var(--linea); border-radius:14px; padding:16px; }
+  label { display:block; margin:10px 0 4px; color:var(--suave); font-size:.85rem; }
+  input, textarea { width:100%; font:inherit; padding:9px 11px; border:1px solid var(--linea); border-radius:9px; background:var(--fondo); color:var(--texto); }
+  button { font:inherit; padding:9px 14px; border:0; border-radius:9px; background:var(--acento); color:#fff; cursor:pointer; margin:8px 8px 0 0; }
+  button.sec { background:transparent; color:var(--texto); border:1px solid var(--linea); }
+  button.peligro { background:var(--mal); }
+  button:disabled { opacity:.5; cursor:default; }
+  .fila { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .estado b { padding:2px 9px; border-radius:99px; font-size:.85rem; background:var(--linea); }
+  .estado b.ok { background:var(--ok); color:#fff; } .estado b.mal { background:var(--mal); color:#fff; }
+  #qr { text-align:center; } #qr img { width:260px; max-width:100%; background:#fff; padding:8px; border-radius:10px; }
+  .aviso { margin-top:8px; font-size:.9rem; color:var(--suave); } .error { color:var(--mal); }
+  ul { margin:6px 0 0; padding-left:18px; color:var(--suave); font-size:.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>WhatsApp · Administración</h1>
+    <p class="sub">Vincula el número, mira el estado del bot y envía mensajes de prueba.</p>
+  </header>
+
+  <section class="tarjeta" id="acceso">
+    <h2>Acceso</h2>
+    <label for="token">Token de administración</label>
+    <input id="token" type="password" autocomplete="off" placeholder="Pega el token (no se guarda en el servidor)">
+    <button id="entrar">Entrar</button>
+    <p class="aviso error" id="errorAcceso"></p>
+  </section>
+
+  <div id="contenido" hidden>
+    <section class="tarjeta">
+      <h2>Estado</h2>
+      <p class="estado">WhatsApp: <b id="estadoWa">—</b> &nbsp; Cuenta: <b id="cuenta">—</b> &nbsp; Bot: <b id="habilitado">—</b></p>
+      <p class="estado">Gemini: <b id="gemini">—</b> &nbsp; Mensajes en espera: <b id="pendientes">—</b></p>
+      <p class="aviso error" id="errorWa"></p>
+      <div class="fila">
+        <button id="conectar">Vincular / reconectar</button>
+        <button id="alternar" class="sec">Habilitar / deshabilitar</button>
+        <button id="desvincular" class="peligro">Cerrar sesión</button>
+      </div>
+    </section>
+
+    <section class="tarjeta" id="tarjetaQr" hidden>
+      <h2>Escanea el código QR</h2>
+      <div id="qr"></div>
+      <p class="aviso">En el teléfono: WhatsApp → Ajustes → Dispositivos vinculados → Vincular un dispositivo. Usa un <b>número de prueba</b>.</p>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Enviar un mensaje de prueba</h2>
+      <label for="para">Teléfono con código de país (solo dígitos)</label>
+      <input id="para" inputmode="numeric" placeholder="59170000000">
+      <label for="texto">Mensaje</label>
+      <textarea id="texto" rows="3" maxlength="1000"></textarea>
+      <button id="enviar">Enviar</button>
+      <p class="aviso" id="resEnvio"></p>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Conversaciones</h2>
+      <p class="aviso">Pausadas (hablando con una persona) y clientes que pidieron no recibir mensajes.</p>
+      <ul id="listas"></ul>
+    </section>
+  </div>
+</main>
+
+<script>
+  const BASE = location.pathname.replace(/\/panel\/?$/, '');      // misma ruta donde está montado el módulo
+  const $ = (id) => document.getElementById(id);
+  let token = sessionStorage.getItem('wa_token') || '';
+  let temporizador = null;
+
+  async function api(ruta, opciones = {}) {
+    const res = await fetch(BASE + ruta, {
+      ...opciones,
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: opciones.body ? JSON.stringify(opciones.body) : undefined,
+    });
+    if (res.status === 401) throw new Error('Token incorrecto');
+    const datos = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(datos.error || 'Error ' + res.status);
+    return datos;
+  }
+
+  function pintar(e) {
+    const wa = e.whatsapp;
+    const b = $('estadoWa'); b.textContent = wa.estado;
+    b.className = wa.estado === 'conectado' ? 'ok' : (['fallido', 'desconectado'].includes(wa.estado) ? 'mal' : '');
+    $('cuenta').textContent = wa.cuenta ? '***' + wa.cuenta.slice(-4) : '—';
+    $('habilitado').textContent = e.habilitado ? 'habilitado' : 'deshabilitado';
+    $('habilitado').className = e.habilitado ? 'ok' : 'mal';
+    $('gemini').textContent = e.gemini.activo ? e.gemini.modelo + ' (' + e.gemini.claves + ' clave/s, modo ' + e.gemini.modo + ')' : 'sin clave: usa palabras clave';
+    $('pendientes').textContent = e.pendientes;
+    $('errorWa').textContent = wa.error || '';
+  }
+
+  async function refrescar() {
+    try {
+      pintar(await api('/estado'));
+      const q = await api('/qr');
+      $('tarjetaQr').hidden = !q.qr;
+      if (q.qr) { const i = document.createElement('img'); i.src = q.qr; i.alt = 'Código QR'; $('qr').replaceChildren(i); }
+      const c = await api('/conversaciones');
+      $('listas').replaceChildren(
+        ...[['Pausadas', c.pausas], ['De baja', c.bajas]].map(([t, l]) => {
+          const li = document.createElement('li');
+          li.textContent = t + ': ' + (l.length ? l.map((n) => '***' + n.slice(-4)).join(', ') : 'ninguna');
+          return li;
+        }),
+      );
+    } catch (err) {
+      $('errorAcceso').textContent = err.message;
+      if (err.message === 'Token incorrecto') salir();
+    }
+  }
+
+  function entrar() { $('acceso').hidden = true; $('contenido').hidden = false; refrescar(); temporizador = setInterval(refrescar, 4000); }
+  function salir() { clearInterval(temporizador); sessionStorage.removeItem('wa_token'); $('acceso').hidden = false; $('contenido').hidden = true; }
+
+  $('entrar').onclick = async () => {
+    token = $('token').value.trim(); $('errorAcceso').textContent = '';
+    try { await api('/estado'); sessionStorage.setItem('wa_token', token); $('token').value = ''; entrar(); }
+    catch (err) { $('errorAcceso').textContent = err.message; }
+  };
+  $('conectar').onclick = async () => { await api('/conectar', { method: 'POST' }).catch((e) => ($('errorWa').textContent = e.message)); refrescar(); };
+  $('alternar').onclick = async () => {
+    const actual = $('habilitado').textContent === 'habilitado';
+    await api('/habilitar', { method: 'POST', body: { habilitado: !actual } }).catch((e) => ($('errorWa').textContent = e.message)); refrescar();
+  };
+  $('desvincular').onclick = async () => {
+    if (!confirm('Se cerrará la sesión de WhatsApp y habrá que escanear un QR nuevo. ¿Continuar?')) return;
+    await api('/desconectar', { method: 'POST' }).catch((e) => ($('errorWa').textContent = e.message)); refrescar();
+  };
+  $('enviar').onclick = async () => {
+    $('resEnvio').textContent = 'Enviando…'; $('resEnvio').className = 'aviso';
+    try { await api('/enviar', { method: 'POST', body: { to: $('para').value.trim(), text: $('texto').value } }); $('resEnvio').textContent = 'Enviado.'; $('texto').value = ''; }
+    catch (err) { $('resEnvio').textContent = err.message; $('resEnvio').className = 'aviso error'; }
+  };
+
+  if (token) { entrar(); }
+</script>
+</body>
+</html>

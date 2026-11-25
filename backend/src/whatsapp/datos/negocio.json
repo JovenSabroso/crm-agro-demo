@@ -1,0 +1,16 @@
+{
+  "nombre": "Mi Negocio",
+  "saludo_extra": "Estamos para ayudarte.",
+  "horario": "Lunes a sábado de 8:00 a 19:00. Domingo cerrado.",
+  "direccion": "Av. Ejemplo 123, Ciudad. Frente a la plaza principal.",
+  "telefono": "+591 70000000",
+  "catalogo": [
+    { "nombre": "Producto o servicio A", "precio": 50, "detalle": "Descripción corta de A" },
+    { "nombre": "Producto o servicio B", "precio": 120, "detalle": "Descripción corta de B" },
+    { "nombre": "Producto o servicio C", "precio": 0, "detalle": "Consultar precio" }
+  ],
+  "preguntas_frecuentes": [
+    { "pregunta": "¿Hacen envíos?", "respuesta": "Sí, hacemos envíos dentro de la ciudad." },
+    { "pregunta": "¿Qué formas de pago aceptan?", "respuesta": "Efectivo, transferencia y QR." }
+  ]
+}
