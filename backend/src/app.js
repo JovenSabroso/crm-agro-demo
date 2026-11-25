@@ -32,7 +32,13 @@ export let whatsapp = null;
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  // Sin HTTPS (demo por IP:puerto) el CSP por defecto rompe la página: upgrade-insecure-requests fuerza https y HSTS lo recuerda.
+  // 'unsafe-inline' en scripts es necesario para el panel HTML de WhatsApp.
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    hsts: false,
+    contentSecurityPolicy: { directives: { ...helmet.contentSecurityPolicy.getDefaultDirectives(), 'upgrade-insecure-requests': null, 'script-src': ["'self'", "'unsafe-inline'"] } },
+  }));
   app.use(cors({
     origin(origin, cb) { if (!origin || config.corsOrigins.includes(origin)) return cb(null, true); cb(null, false); },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization'],
