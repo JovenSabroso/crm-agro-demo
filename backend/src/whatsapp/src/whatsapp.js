@@ -132,6 +132,7 @@ export function createWhatsApp({ config, logger, onMensaje, onEscribiendo }) {
   function procesar(m) {
     const jid = m.key?.remoteJid ?? '';
     if (m.key?.fromMe || !jid || jid === 'status@broadcast' || jid.endsWith('@g.us') || jid.endsWith('@broadcast') || jid.endsWith('@newsletter')) return;
+    logger.info({ jid: jid.replace(/^\d+/, (d) => '***' + d.slice(-4)) }, 'Mensaje entrante');
     const id = m.key?.id;
     if (id) {
       if (vistos.has(id)) return;
@@ -141,7 +142,7 @@ export function createWhatsApp({ config, logger, onMensaje, onEscribiendo }) {
     const msg = m.message ?? {};
     const texto = msg.conversation ?? msg.extendedTextMessage?.text ?? msg.imageMessage?.caption ?? null;
     const tipo = texto != null ? 'text' : (Object.keys(msg)[0] ?? 'otro').replace(/Message$/, '');
-    onMensaje({ phone: telefonoDe(jid), jid, id, type: tipo, text: texto ?? `[${tipo}]`, timestamp: Number(m.messageTimestamp) || Math.floor(Date.now() / 1000) });
+    onMensaje({ phone: telefonoDe(m.key?.remoteJidAlt || m.key?.senderPn || jid), jid, id, type: tipo, text: texto ?? `[${tipo}]`, timestamp: Number(m.messageTimestamp) || Math.floor(Date.now() / 1000) });
   }
 
   /** Envía texto con retraso aleatorio (parece humano) y tope de envíos por minuto. */

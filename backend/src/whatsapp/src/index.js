@@ -47,13 +47,15 @@ export function crearModuloWhatsApp({ config, logger, negocio, autenticar, hooks
   const jidDe = (phone) => `${phone}@s.whatsapp.net`;
 
   async function responder({ phone, text, messages }) {
+    // Responder al JID original (puede ser @lid): reconstruirlo desde el teléfono no siempre llega.
+    const jid = messages?.at?.(-1)?.jid || jidDe(phone);
     if (!store.habilitado || store.estaDeBaja(phone) || store.estaPausado(phone)) return;
     logger.info({ phone: mask(phone), mensajes: messages.length }, 'Lote recibido'); // nunca el texto
     await hooks.alRecibirLote?.({ phone, text, messages });
 
     if (pideBaja(text)) {
       store.darDeBaja(phone);
-      await wa.enviar(jidDe(phone), 'Listo, no te enviaremos más mensajes automáticos. Gracias.', { retraso: false });
+      await wa.enviar(jid, 'Listo, no te enviaremos más mensajes automáticos. Gracias.', { retraso: false });
       return;
     }
 
@@ -64,7 +66,7 @@ export function crearModuloWhatsApp({ config, logger, negocio, autenticar, hooks
       logger.error({ err: err.message }, 'Fallo del motor del bot');
       respuesta = 'Tuvimos un inconveniente técnico. Por favor, inténtalo de nuevo en unos minutos.';
     }
-    await wa.enviar(jidDe(phone), respuesta);
+    await wa.enviar(jid, respuesta);
     await hooks.alResponder?.({ phone, text, respuesta });
   }
 
